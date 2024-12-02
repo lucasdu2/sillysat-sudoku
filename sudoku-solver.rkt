@@ -91,15 +91,21 @@
       (λ (c) (lit #t (get-var-from-coord-num c g-num n)))
       coords))
    (range n)))
+
 ;; To encode the constraint that there should be *at most* one of each number in
 ;; a set of coordinates, we can construct a conjunction of pairwise disjunctions
 ;; for each possible number in the set of coordinates. For example, to encode
 ;; the fact that there can be at most one of the number 9 in row 0:
 ;; (
-;;   ((lit #t (guess 0 0 9)) ∨ (lit #t (guess 0 1 9))) ∧
-;;   ((lit #t (guess 0 0 9)) ∨ (lit #t (guess 0 2 9))) ∧
+;;   ((lit #f (guess 0 0 9)) ∨ (lit #f (guess 0 1 9))) ∧
+;;   ((lit #f (guess 0 0 9)) ∨ (lit #f (guess 0 2 9))) ∧
 ;;   ...and so on
 ;; )
+;; Notice that the literals are negated. Intuitively, this means that if any of
+;; the coordinates in the set is assigned the number 9, *none of the other*
+;; coorindates can also be assigned the number 9. Of course, this encoding
+;; still allows all coordinates to *not* be assigned 9. Take some time to think
+;; about why this is true. This is equivalent to our *at most one* constraint.
 (define (get-all-pairs l)
   (define (pairs-iter rem-l pairs)
     (if (empty? rem-l)
@@ -109,8 +115,6 @@
                      (map (λ (c) (list (first rem-l) c)) (rest rem-l))
                      pairs))))
   (pairs-iter l '()))
-
-;; TODO: Write up the thinking behind the encoding of this condition.
 (define (encode-maximum-one n coords)
   (append*
    (map
