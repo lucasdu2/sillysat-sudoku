@@ -1,0 +1,139 @@
+#+TITLE: Satisfiability and Sudoku
+#+AUTHOR: Lucas Du
+#+BEAMER_HEADER: \institute[RC]{Recurse Center}}
+#+OPTIONS: H:2 toc:t num:t
+#+LATEX_CLASS: beamer
+#+LATEX_CLASS_OPTIONS: [presentation]
+#+BEAMER_THEME: Goettingen
+#+COLUMNS: %45ITEM %10BEAMER_ENV(Env) %10BEAMER_ACT(Act) %4BEAMER_COL(Col)
+
+* What is satisfiability?
+** Broadly speaking
+*** Logical satisfiability
+    :PROPERTIES:
+    :BEAMER_env: definition
+    :END:
+    A logical formula is /satisfiable/ if, given some assignment of values to its variables, it is ~true~
+
+** SAT solvers
+- SAT solvers are programs that /automatically/ solve /propositional logic formulae/.
+- You give it a propositional logic formula, and it will tell you (after some computation), whether the formula is /satisfiable/ or /unsatisfiable/.
+- If it's satisfiable, it can give you a /model/: the actual assignments that make the formula true.
+- So it's constructive!
+
+** Propositional logic
+- A definition: a logic that only has /boolean/ variables, along with your standard logical connectives (and, or, implies, not, etc.).
+- The only possible value assignments to boolean variables are ~true~ or ~false~.
+#+BEAMER: \pause
+- *Key point:* propositional logic is /decidable/!
+  - In other words: there exists an algorithm (some mechanical method) that always terminates and always gives you the right answer.
+- SAT solvers take advantage of this decidability.
+
+** First-order theories
+- Sometimes, we want to reason about more complex things though...
+#+BEAMER: \pause
+- i.e. arithmetic over integers
+  - In propositional logic, we cannot determine the truth of a statement like:
+$$\forall x, y, z. x \ge z \land y \geq 0 \implies x + y \ge z$$
+#+BEAMER: \pause
+(hand waving)
+
+* SMT solvers (an aside)
+** SMT vs. SAT
+- SMT (satisfiability modulo theories) are built on top of SAT solvers—specifically, they add first-order theories on top of a base SAT solver
+- They allow us to solve more complex logical formulae automatically.
+- Encode /decidable/ first-order theories (or /fragments/ of first-order theories), of which there are quite a few!
+- i.e. formulas containing /real numbers/, /integers/, /arrays/, /strings/, etc.
+
+** Some real-life SMT solvers
+- Z3 (probably the most popular, developed by Microsoft Research)
+- CVC4/CVC5
+- Boolector
+- Alt-Ergo
+- etc.
+
+** OK, what's the point?
+- Who cares about solving logical formulae?
+- It turns out...lots of problems in computing /can be encoded in logic!/
+- If we can figure out the right encoding, SMT solvers give us the ability to /automatically/ and /verifiably/ solve some very hard problems
+#+BEAMER: \pause
+- Some quick examples:
+  - Verified synthesis of CRDTs (Katara)
+  - Distributed systems testing (lineage-driven fault injection)
+  - Refinement types/liquid types (Liquid Haskell)
+  - Verification of web page layout accessibility (Panchekha et al., 2019)
+  - Verified synthesis of compiler optimizations (Hydra, 2024)
+
+* DPLL-based SAT solvers
+** DPLL
+- Most (if not all) modern SAT solvers are based on the DPLL algorithm
+- Davis-Putnam-Logemann-Loveland
+- Takes a propositional formula in CNF (conjunctive normal form) and decides its satisfiability
+
+** CNF
+BTW, there are various "normal forms" that logical formulae can take. CNF has the following structure:
+$$(v_1 \lor v_2 \lor \ldots) \land (z_1 \lor \ldots) \land \ldots$$
+
+** The algorithm
+At a high level:
+- If there is a /unit clause/, i.e. a clause with only one literal in it, we have an implied assignment
+  - For example, a unit clause of $(\lnot A)$ means that $A$ must be assigned ~false~
+  - Propagate that implied assignment throughout the rest of the formula
+  - Repeat from the top
+#+BEAMER: \pause
+- Otherwise, choose a free variable (one with no assignment)
+  - Assign it either ~true~ or ~false~
+  - Propagate that assignment throughout the rest of the formula
+  - Repeat from the top
+
+** The algorithm (pt2)
+- If we hit a conflict, backtrack and try another free variable assignment (the one we didn't try before)
+- If we have backtracked all the way to the top level without success, then the formula is /unsatisfiable/
+- If we successfully assigned values to all variables without any conflict, the formula is /satisfiable/
+
+** A worked example
+OK, let's be a bit more specific.
+#+BEAMER: \pause
+$$(A \lor \lnot B \lor \lnot C) \land (\lnot A \lor D \lor B \lor \lnot C) \land (\lnot A \lor D)$$
+#+BEAMER: \pause
+Guess for a free variable: $A$ is ~true~.
+#+BEAMER: \pause
+$$(D \lor B \lor \lnot C) \land (D)$$
+#+BEAMER: \pause
+Now, we have a unit clause! Let $D$ be ~true~.
+#+BEAMER: \pause
+This satisfies the formula, i.e. the formula will be true when $A$ is ~true~ and $D$ is also ~true~.
+
+** Practically...
+Of course, real-life SAT solvers are quite a bit more complicated.
+#+BEAMER: \pause
+There are a number of optimizations (actually, a huge number) developed over the years.
+#+BEAMER: \pause
+The most important one: CDCL (conflict-driven clause-learning).
+- The general idea there is to "learn" an additional clause whenever the solver hits a conflict.
+- Prunes the search space, intuitively encodes "why" we the hit the conflict and avoids that "why" in the future.
+
+* Encoding and solving Sudoku (with demo!)
+** Sudoku constraints
+It turns out we can encode the rules of Sudoku in propositional logic and have a SAT solver produce an answer...automatically!
+- Only one number assignment per cell
+- Each row, column, and square must have /only/ one of each possible number assignment
+- Must use the initial assignments (i.e. the initial Sudoku board clues)
+#+BEAMER: \pause
+- Specifics...left as an exercise :)
+  - Was fun doing this with Banna and Be (and others who popped in to our Programs and Proofs group)!
+
+** Demo time!
+("cool" demo here)
+
+* References
+** References for examples slide
+1. Katara: Synthesizing CRDTs with Verified Lifting (Laddad et al., 2022)
+2. Lineage-driven Fault Injection (Alvaro et al., 2015)
+3. Liquid Haskell: https://ucsd-progsys.github.io/liquidhaskell/
+4. Modular Verification of Web Page Layout (Panchekha et al., 2019)
+5. Hydra: Generalizing Peephole Optimizations with Program Synthesis (Mukherjee and Regehr, 2024)
+
+** Standard references for logic and automated reasoning
+- The Calculus of Computation (Bradley and Manna, 2007)
+- Decision Procedures: An Algorithmic Point of View (Kroening and Strichman, 2017)
